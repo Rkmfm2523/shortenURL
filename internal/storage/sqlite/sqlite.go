@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 )
 
@@ -40,6 +41,7 @@ func (s *Storage) SaveURL(urlToSave string, alias string) error {
 	if err != nil {
 		return fmt.Errorf("error in save url: %s", err)
 	}
+	defer stmt.Close()
 
 	_, err = stmt.Exec(urlToSave, alias)
 	if err != nil {
@@ -56,6 +58,7 @@ func (s *Storage) GetURL(alias string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error get response this alias: %s", err)
 	}
+	defer stmt.Close()
 
 	var resString string
 
@@ -65,4 +68,28 @@ func (s *Storage) GetURL(alias string) (string, error) {
 	}
 
 	return resString, nil
+}
+
+func (s *Storage) DeleteURL(alias string) error {
+	const op = "storage.sqlite.DeleteURL"
+
+	stmt, err := s.db.Prepare("DELETE FROM url WHERE alias = ?")
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	defer stmt.Close()
+
+	res, err := stmt.Exec(alias)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	v, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("affected err: %s", err)
+	}
+	if v == 0 {
+		return errors.New("No url deleted")
+	}
+
+	return nil
 }
